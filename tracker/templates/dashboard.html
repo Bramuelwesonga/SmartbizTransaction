@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SmartBiz Dashboard</title>
+
+  <!-- Bootstrap CSS for responsive design and components -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+
+  <!-- Chart.js for data visualization -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Custom CSS styles -->
+   {% load static %}
+  <style>
+    body {
+      padding: 20px;
+      background-color: #f9f9f9;
+    }
+    .summary-box {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .transaction-list li {
+      margin-bottom: 10px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+<!-- Header and Add Transaction / Auth Buttons -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1>SmartBiz Dashboard</h1>
+  <div>
+    <a href="{% url 'add_transaction' %}" class="btn btn-success me-2">+ Add Transaction</a> 
+    
+  </div>
+</div>
+
+
+  <!-- Filter Form for transaction type (income/expense/all) -->
+  <form method="get" class="mb-4">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-4">
+        <label for="type" class="form-label">Filter by Type:</label>
+        <select id="type" name="type" class="form-select" onchange="this.form.submit()">
+          <option value="" {% if not request.GET.type %}selected{% endif %}>All</option>
+          <option value="income" {% if request.GET.type == 'income' %}selected{% endif %}>Income</option>
+          <option value="expense" {% if request.GET.type == 'expense' %}selected{% endif %}>Expense</option>
+        </select>
+      </div>
+    </div>
+  </form>
+
+  <!-- Summary Boxes for total income, total expense, and balance -->
+  <div class="row text-center">
+    <div class="col-md-4">
+      <div class="summary-box">
+        <h5>Total Income</h5>
+        <p class="text-success fw-bold">${{ total_income }}</p>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="summary-box">
+        <h5>Total Expense</h5>
+        <p class="text-danger fw-bold">${{ total_expense }}</p>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="summary-box">
+        <h5>Balance</h5>
+        <p class="fw-bold">${{ balance }}</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Transaction List with Export CSV option -->
+  <div class="mt-5">
+    <div class="d-flex justify-content-between align-items-center">
+      <h2>Transactions</h2>
+      <!-- Button to export transactions to CSV -->
+      <a href="{% url 'export_pdf' %}" class="btn btn-outline-primary">Download PDF</a>
+    </div>
+
+    <!-- Loop through each transaction and display it -->
+    <ul class="transaction-list list-unstyled mt-3">
+      {% for t in transactions %}
+        <li>
+          <strong>{{ t.date }}</strong> - 
+          <span class="text-capitalize">{{ t.transaction_type }}</span>:
+          <span class="{% if t.transaction_type == 'income' %}text-success{% else %}text-danger{% endif %}">
+            ${{ t.amount }}
+          </span><br>
+          <small>{{ t.description }}</small>
+        </li>
+      {% empty %}
+        <!-- Message when there are no transactions -->
+        <li>No transactions found.</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <!-- Charts Section -->
+  <div class="row mt-5">
+    <!-- Bar Chart for comparing income vs expense -->
+    <div class="col-md-6">
+      <h4 class="text-center">Bar Chart</h4>
+      <canvas id="barChart" height="200"></canvas>
+    </div>
+
+    <!-- Pie Chart for income vs expense ratio -->
+    <div class="col-md-6">
+      <h4 class="text-center">Pie Chart</h4>
+      <canvas id="pieChart" height="200"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Chart rendering logic using Chart.js -->
+<script>
+  // Get income and expense values from Django template variables
+  const income = parseFloat("{{ total_income|default_if_none:0|floatformat:'0' }}");
+  const expense = parseFloat("{{ total_expense|default_if_none:0|floatformat:'0' }}");
+
+  // Bar Chart for Income vs Expense
+  new Chart(document.getElementById('barChart'), {
+    type: 'bar',
+    data: {
+      labels: ['Income', 'Expense'],
+      datasets: [{
+        label: 'Amount ($)',
+        data: [income, expense],
+        backgroundColor: ['#4caf50', '#f44336'] // green and red bars
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false }
+      }
+    }
+  });
+
+  // Pie Chart to show proportions
+  new Chart(document.getElementById('pieChart'), {
+    type: 'pie',
+    data: {
+      labels: ['Income', 'Expense'],
+      datasets: [{
+        data: [income, expense],
+        backgroundColor: ['#4caf50', '#f44336'] // green and red slices
+      }]
+    },
+    options: {
+      responsive: true
+    }
+  });
+</script>
+
+<!-- Bootstrap JS Bundle for interactivity -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

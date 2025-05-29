@@ -3,6 +3,13 @@ from django.db.models import Sum
 from django.http import HttpResponse
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
+from django.http import JsonResponse
+from PIL import Image
+import pytesseract
+import re
+from io import BytesIO
+import pytesseract
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 from .models import Transaction
 from .forms import TransactionForm
@@ -71,3 +78,44 @@ def export_pdf(request):
 
     p.save()
     return response
+def ajax_receipt_ocr(request):
+    if request.method == 'POST' and request.FILES.get('receipt'):
+        receipt = request.FILES['receipt']
+        image = Image.open(receipt)
+        ocr_text = pytesseract.image_to_string(image)
+
+        # Extract amount
+        amount_match = re.search(r'(\d+\.\d{2})', ocr_text)
+        amount = amount_match.group(1) if amount_match else ''
+
+        # Extract description
+        desc_match = re.search(r'(Item|Description|Desc):?\s*(.+)', ocr_text, re.IGNORECASE)
+        description = desc_match.group(2).strip() if desc_match else ocr_text[:100]
+
+        return JsonResponse({
+            'amount': amount,
+            'description': description
+        })
+
+    return JsonResponse({'error': 'Invalid request'}, status=400)
+from django.db.models import Sum
+from .models import Transaction
+
+def dashboard(request):
+    transactions = Transaction.objects.all()
+
+    # Optional filter
+    tx_type = request.GET.get('type')
+    if tx_type:
+        transactions = transactions.filter(transaction_type__iexact=tx_type)
+
+    total_income = transactions.filter(transaction_type='income').aggregate(Sum('amount'))['amount__sum'] or 0
+    total_expense = transactions.filter(transaction_type='expense').aggregate(Sum('amount'))['amount__sum'] or 0
+    balance = total_income - total_expense  # This is your profit
+
+    return render(request, 'dashboard.html', {
+        'transactions': transactions,
+        'total_income': total_income,
+        'total_expense': total_expense,
+        'balance': balance
+    })

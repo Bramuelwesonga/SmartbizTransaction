@@ -98,12 +98,6 @@ cpp
 Copy
 Edit
 http://127.0.0.1:8000/
-📸 Screenshots
-Dashboard
-View total income, expenses, net balance, and a detailed list of transactions.
-
-Add Transaction
-Form for adding new income or expense transactions, with support for descriptions and optional receipt image upload.
 
 📄 Forms
 The transaction form includes the following fields:
